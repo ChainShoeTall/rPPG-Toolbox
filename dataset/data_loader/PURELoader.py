@@ -47,11 +47,12 @@ class PURELoader(BaseLoader):
     def get_raw_data(self, data_path):
         """Returns data directories under the path(For PURE dataset)."""
 
-        data_dirs = glob.glob(data_path + os.sep + "*-*")
+        data_dirs = glob.glob(data_path + os.sep + "*-*/")
         if not data_dirs:
             raise ValueError(self.dataset_name + " data paths empty!")
         dirs = list()
         for data_dir in data_dirs:
+            data_dir = data_dir[:-1]
             subject_trail_val = os.path.split(data_dir)[-1].replace('-', '')
             index = int(subject_trail_val)
             subject = int(subject_trail_val[0:2])
@@ -105,8 +106,8 @@ class PURELoader(BaseLoader):
         # Read Frames
         if 'None' in config_preprocess.DATA_AUG:
             # Utilize dataset-specific function to read video
-            frames = self.read_video(
-                os.path.join(data_dirs[i]['path'], filename, ""))
+            # frames = self.read_video(os.path.join(data_dirs[i]['path'], filename, ""))
+            frames = self.read_video(data_dirs[i]['path'] + os.sep)
         elif 'Motion' in config_preprocess.DATA_AUG:
             # Utilize general function to read video in .npy format
             frames = self.read_npy_video(
@@ -118,8 +119,7 @@ class PURELoader(BaseLoader):
         if config_preprocess.USE_PSUEDO_PPG_LABEL:
             bvps = self.generate_pos_psuedo_labels(frames, fs=self.config_data.FS)
         else:
-            bvps = self.read_wave(
-                os.path.join(data_dirs[i]['path'], "{0}.json".format(filename)))
+            bvps = self.read_wave(data_dirs[i]['path'] + ".json")
 
         target_length = frames.shape[0]
         bvps = BaseLoader.resample_ppg(bvps, target_length)

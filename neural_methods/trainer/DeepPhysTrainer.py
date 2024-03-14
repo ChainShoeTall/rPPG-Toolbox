@@ -193,6 +193,7 @@ class DeepPhysTrainer(BaseTrainer):
         print('')
         calculate_metrics(predictions, labels, self.config)
         if self.config.TEST.OUTPUT_SAVE_DIR: # saving test outputs
+            print(f'Result saved in {self.config.TEST.OUTPUT_SAVE_DIR}...')
             self.save_test_outputs(predictions, labels, self.config)
 
     def save_model(self, index):

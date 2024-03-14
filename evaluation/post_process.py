@@ -8,7 +8,8 @@ import scipy.io
 from scipy.signal import butter
 from scipy.sparse import spdiags
 
-
+from hrv_extraction.Stress.Physiological import HRV, stress_baevskiy
+from hrv_extraction.HRV.support_functions import peak_analysis,  peak_detection_gt
 def _next_power_of_2(x):
     """Calculate the nearest power of 2."""
     return 1 if x == 0 else 2 ** (x - 1).bit_length()
@@ -96,7 +97,7 @@ def _calculate_SNR(pred_ppg_signal, hr_label, fs=30, low_pass=0.75, high_pass=2.
         SNR = 0
     return SNR
 
-def calculate_metric_per_video(predictions, labels, fs=30, diff_flag=True, use_bandpass=True, hr_method='FFT'):
+def calculate_metric_per_video(predictions, labels, fs=30, diff_flag=True, use_bandpass=True, hr_method='FFT', calc_hrv=True):
     """Calculate video-level HR and SNR"""
     if diff_flag:  # if the predictions and labels are 1st derivative of PPG signal.
         predictions = _detrend(np.cumsum(predictions), 100)
@@ -118,5 +119,21 @@ def calculate_metric_per_video(predictions, labels, fs=30, diff_flag=True, use_b
         hr_label = _calculate_peak_hr(labels, fs=fs)
     else:
         raise ValueError('Please use FFT or Peak to calculate your HR.')
+    # np.save("/home/cst/Documents/Dataset/rPPG-toolbox-preprocess/PURE_demo/predictions.npy", predictions)
     SNR = _calculate_SNR(predictions, hr_label, fs=fs)
-    return hr_label, hr_pred, SNR
+    if calc_hrv:
+        ibi = peak_detection_gt(predictions, window_size=20, fs=30, pyamd_win=100)
+        hrv = HRV(ibi)
+        sdnn_pred = hrv.sdnn()
+        avnn_pred = np.mean(hrv.RR)
+
+        ibi = peak_detection_gt(labels, window_size=20, fs=30, pyamd_win=100)
+        hrv = HRV(ibi)
+        sdnn_gt = hrv.sdnn()
+        avnn_gt = np.mean(hrv.RR)
+    else:
+        avnn_gt = 0
+        avnn_pred = 0
+        sdnn_gt = 0
+        sdnn_pred = 0
+    return hr_label, hr_pred, SNR, (avnn_pred - avnn_gt, sdnn_pred - sdnn_gt)

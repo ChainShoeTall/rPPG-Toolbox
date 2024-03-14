@@ -49,6 +49,8 @@ def calculate_metrics(predictions, labels, config):
     predict_hr_peak_all = list()
     gt_hr_peak_all = list()
     SNR_all = list()
+    AVNN_all = list()
+    SDNN_all = list()
     print("Calculating metrics!")
     for index in tqdm(predictions.keys(), ncols=80):
         prediction = _reform_data_from_dict(predictions[index])
@@ -79,17 +81,20 @@ def calculate_metrics(predictions, labels, config):
                 raise ValueError("Unsupported label type in testing!")
             
             if config.INFERENCE.EVALUATION_METHOD == "peak detection":
-                gt_hr_peak, pred_hr_peak, SNR = calculate_metric_per_video(
+                gt_hr_peak, pred_hr_peak, SNR, RR = calculate_metric_per_video(
                     pred_window, label_window, diff_flag=diff_flag_test, fs=config.TEST.DATA.FS, hr_method='Peak')
                 gt_hr_peak_all.append(gt_hr_peak)
                 predict_hr_peak_all.append(pred_hr_peak)
                 SNR_all.append(SNR)
             elif config.INFERENCE.EVALUATION_METHOD == "FFT":
-                gt_hr_fft, pred_hr_fft, SNR = calculate_metric_per_video(
-                    pred_window, label_window, diff_flag=diff_flag_test, fs=config.TEST.DATA.FS, hr_method='FFT')
+                gt_hr_fft, pred_hr_fft, SNR, RR = calculate_metric_per_video(
+                    pred_window, label_window, diff_flag=diff_flag_test, fs=config.TEST.DATA.FS, hr_method='FFT', calc_hrv=config.TEST.CALCULATE_HRV)
                 gt_hr_fft_all.append(gt_hr_fft)
                 predict_hr_fft_all.append(pred_hr_fft)
-                SNR_all.append(SNR)
+                if config.TEST.CALCULATE_HRV:
+                    SNR_all.append(SNR)
+                    AVNN_all.append(RR[0])
+                    SDNN_all.append(RR[1])
             else:
                 raise ValueError("Inference evaluation method name wrong!")
     
@@ -147,6 +152,8 @@ def calculate_metrics(predictions, labels, config):
                     file_name=f'{filename_id}_FFT_BlandAltman_DifferencePlot.pdf')
             else:
                 raise ValueError("Wrong Test Metric Type")
+        if config.TEST.CALCULATE_HRV:        
+            print("AVNN, SDNN: ",np.mean(np.abs(AVNN_all)), np.mean(np.abs(SDNN_all)))
     elif config.INFERENCE.EVALUATION_METHOD == "peak detection":
         gt_hr_peak_all = np.array(gt_hr_peak_all)
         predict_hr_peak_all = np.array(predict_hr_peak_all)
